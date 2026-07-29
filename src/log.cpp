@@ -100,6 +100,10 @@ void Logger::add_file_sink(const std::filesystem::path& path) {
     file_sink_ = std::move(stream);
 }
 
+void Logger::remove_file_sink() noexcept {
+    file_sink_.reset();
+}
+
 bool Logger::should_log(LogLevel level) const noexcept {
     if (level_ == LogLevel::off || level == LogLevel::off) {
         return false;

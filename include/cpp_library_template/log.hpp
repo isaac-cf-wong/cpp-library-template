@@ -47,6 +47,31 @@ enum class LogLevel : std::uint8_t {
 /// @throws std::invalid_argument if @p name is not a known level.
 [[nodiscard]] CPP_LIBRARY_TEMPLATE_EXPORT LogLevel level_from_string(std::string_view name);
 
+#ifdef _MSC_VER
+// C4251: 'Logger::name_': 'std::string' needs to have dll-interface to be used
+// by clients of 'Logger'.
+//
+// This is MSVC pointing at something real, and the suppression is a deliberate
+// trade-off rather than a shrug. An exported class whose layout contains standard
+// library types couples consumers to the same standard library: the same MSVC
+// toolchain, the same CRT, and the same _ITERATOR_DEBUG_LEVEL. Mixing those is
+// undefined behaviour, and no warning setting changes that.
+//
+// The template accepts the coupling because a DLL and its consumers being built
+// together is the normal case, and because the alternative -- the pimpl idiom on
+// every exported class -- is a heavy pattern to impose on a starting point.
+//
+// If your library must be consumed across toolchains, hide the state behind an
+// opaque pointer and expose only functions. See
+// docs/template_documentation/user_guide/build_system.md.
+//
+// The pragma lives in the header rather than in cmake/CompilerWarnings.cmake on
+// purpose: consumers compiling against this header would otherwise get the same
+// warning in their own build, where our warning flags do not reach.
+#pragma warning(push)
+#pragma warning(disable : 4251)
+#endif
+
 /// @brief A logger that writes timestamped records to a stream and, optionally,
 ///        to a file.
 ///
@@ -76,6 +101,15 @@ public:
     /// @param path Path of the log file.
     /// @throws std::runtime_error if the file cannot be opened.
     void add_file_sink(const std::filesystem::path& path);
+
+    /// @brief Close the file sink, if there is one, and stop mirroring to it.
+    ///
+    /// Calling this with no file sink attached does nothing.
+    ///
+    /// Needed more often than it looks: POSIX lets you delete a file that is
+    /// still open, and Windows does not. Anything that removes or renames the log
+    /// file while the logger is alive has to release it first.
+    void remove_file_sink() noexcept;
 
     /// @brief Minimum level currently emitted.
     /// @return The active level.
@@ -138,5 +172,9 @@ private:
     LogLevel level_;
     std::shared_ptr<std::ostream> file_sink_;
 };
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 }  // namespace cpp_library_template

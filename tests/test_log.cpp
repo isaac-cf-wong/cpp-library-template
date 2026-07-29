@@ -184,7 +184,19 @@ protected:
         std::filesystem::remove_all(directory_);
     }
 
-    void TearDown() override { std::filesystem::remove_all(directory_); }
+    void TearDown() override {
+        // Release the log file before deleting the directory. On POSIX an open
+        // file can be unlinked; on Windows it cannot, and remove_all throws
+        // "The process cannot access the file because it is being used by
+        // another process". The logger outlives TearDown -- it is a member of
+        // the fixture -- so it has to be told to let go.
+        logger_.remove_file_sink();
+
+        // Cleanup must not throw out of TearDown, where a failure would be
+        // reported against whichever test ran, masking the real result.
+        std::error_code error;
+        std::filesystem::remove_all(directory_, error);
+    }
 
     [[nodiscard]] static std::string read(const std::filesystem::path& path) {
         const std::ifstream file{path};
@@ -229,6 +241,45 @@ TEST_F(LoggerFileSinkTest, DroppedRecordsAreNotWrittenToTheFile) {
     logger_.debug("below the threshold");
 
     EXPECT_TRUE(read(path).empty());
+}
+
+TEST_F(LoggerFileSinkTest, RemoveFileSinkStopsMirroringButKeepsTheStream) {
+    const auto path = directory_ / "run.log";
+    logger_.add_file_sink(path);
+    logger_.info("to both sinks");
+
+    logger_.remove_file_sink();
+    logger_.info("stream only");
+
+    const std::string contents = read(path);
+    EXPECT_THAT(contents, HasSubstr("to both sinks"));
+    EXPECT_THAT(contents, testing::Not(HasSubstr("stream only")));
+    EXPECT_THAT(output(), HasSubstr("stream only"));
+}
+
+TEST_F(LoggerFileSinkTest, RemoveFileSinkIsSafeWithNoFileSinkAttached) {
+    logger_.remove_file_sink();
+    logger_.remove_file_sink();
+
+    logger_.info("still works");
+    EXPECT_THAT(output(), HasSubstr("still works"));
+}
+
+// The file must be deletable once the sink is released. This passes trivially on
+// POSIX, where an open file can be unlinked anyway, and is the real check on
+// Windows, where it cannot -- which is how this API came to exist.
+TEST_F(LoggerFileSinkTest, TheLogFileCanBeDeletedAfterReleasingTheSink) {
+    const auto path = directory_ / "run.log";
+    logger_.add_file_sink(path);
+    logger_.info("something");
+    ASSERT_TRUE(std::filesystem::exists(path));
+
+    logger_.remove_file_sink();
+
+    std::error_code error;
+    std::filesystem::remove(path, error);
+    EXPECT_FALSE(error) << error.message();
+    EXPECT_FALSE(std::filesystem::exists(path));
 }
 
 TEST_F(LoggerFileSinkTest, OpeningAnUnwritablePathThrows) {

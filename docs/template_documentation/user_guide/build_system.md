@@ -122,6 +122,46 @@ shared library, faster loading, and -- most usefully -- an ABI you decided on
 rather than one that happened. Forgetting the annotation produces a link error
 in the shared build, which the CI matrix covers.
 
+### MSVC, C4251, and exported classes holding STL types
+
+`include/cpp_library_template/log.hpp` suppresses warning C4251 around the
+`Logger` class, and the comment there explains why. The short version:
+
+> `'Logger::name_': 'std::string' needs to have dll-interface to be used by clients of 'Logger'`
+
+MSVC is pointing at something real. An exported class whose **layout** contains
+standard library types couples every consumer to the same standard library: the
+same MSVC toolchain, the same CRT, and the same `_ITERATOR_DEBUG_LEVEL`. Mixing
+those is undefined behaviour, and silencing the warning does not change that.
+
+The template accepts the coupling, because a DLL and its consumers being built
+together is the normal case, and because requiring the pimpl idiom on every
+exported class is a heavy pattern to impose on a starting point.
+
+**If your library will be consumed across toolchains, that trade-off is wrong
+for you.** Hide the state behind an opaque pointer and export only functions:
+
+```cpp
+class CPP_LIBRARY_TEMPLATE_EXPORT Logger {
+public:
+    Logger(std::string_view name, LogLevel level);
+    ~Logger();
+    Logger(Logger&&) noexcept;
+    Logger& operator=(Logger&&) noexcept;
+
+    void log(LogLevel level, std::string_view message);
+
+private:
+    struct Impl;
+    Impl* impl_;  // a raw pointer, so not even unique_ptr appears in the layout
+};
+```
+
+The pragma is in the header rather than in `cmake/CompilerWarnings.cmake` on
+purpose: those flags are `BUILD_INTERFACE` only, so a consumer compiling against
+the header with `/W4` would otherwise get the warning in their own build, where
+nothing we set reaches them.
+
 ## Install and export
 
 ```bash
