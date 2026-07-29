@@ -97,9 +97,8 @@
         {
             "name": "ci-msvc",
             "displayName": "What CI configures on Windows",
+            "description": "No generator is named on purpose: pinning one Visual Studio version breaks as soon as the runner image ships another. With no generator CMake picks the newest Visual Studio installed. See build_system.md.",
             "inherits": "base",
-            "generator": "Visual Studio 17 2022",
-            "architecture": "x64",
             "cacheVariables": {
                 "CPP_LIBRARY_TEMPLATE_WARNINGS_AS_ERRORS": "ON"
             }

@@ -205,5 +205,11 @@ its job.
 needs the DLL beside the executable or on `PATH`. The install layout puts it in
 `bin/`, which is what `run_package_test.cmake` relies on.
 
+**`could not find any instance of Visual Studio`** -- a pinned VS generator no
+longer matches the runner image. `windows-latest` moves, and it has already
+moved once to an image carrying only VS 2026. The `ci-msvc` preset therefore
+names no generator, so CMake picks whichever Visual Studio is installed. If you
+reintroduce a pinned generator, pin the runner image in the same commit.
+
 **`conan create` fails only in CI** -- almost always a missing `--build=missing`
 for a dependency with no prebuilt binary for that compiler and ABI.

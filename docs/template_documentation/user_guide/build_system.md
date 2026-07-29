@@ -37,7 +37,23 @@ cmake --list-presets
 | `static`     | `BUILD_SHARED_LIBS=OFF`.                               |
 | `shared`     | `BUILD_SHARED_LIBS=ON`.                                |
 | `ci`         | What CI configures on Linux and macOS.                 |
-| `ci-msvc`    | What CI configures on Windows, Visual Studio 2022.     |
+| `ci-msvc`    | What CI configures on Windows.                         |
+
+!!! note "Why `ci-msvc` does not name a Visual Studio version"
+
+    Every other preset uses Ninja explicitly. `ci-msvc` names no generator at
+    all, so CMake picks the newest Visual Studio actually installed.
+
+    This is not an oversight. The preset originally pinned
+    `Visual Studio 17 2022`, and the first CI run failed with
+    `could not find any instance of Visual Studio` -- because `windows-latest`
+    had moved to an image carrying VS 2026 and nothing else. A pinned generator
+    in a template is a time bomb set by whoever wrote it and detonated by
+    whoever inherits it.
+
+    If you *need* a specific toolset -- for ABI reasons, say -- pin it
+    deliberately with `-DCMAKE_GENERATOR_TOOLSET=version=14.38` and pin the
+    runner image alongside it, so the two cannot drift apart.
 
 Each preset builds into `build/<preset>/`, so they coexist. There are also
 workflow presets, which do configure-build-test in one step:
