@@ -1,0 +1,114 @@
+# clang-tidy is this template's analogue of Ruff: one tool covering lint,
+# modernisation, naming and the security checks (the cert-* and bugprone-*
+# families stand in for bandit).
+#
+# It needs compile_commands.json, which the build always emits
+# (CMAKE_EXPORT_COMPILE_COMMANDS=ON). Run it over everything with:
+#
+#   cmake --preset dev && ln -sf build/dev/compile_commands.json .
+#   run-clang-tidy -p build/dev
+#
+# The pre-commit hook only checks the files you touched, which is what keeps the
+# commit loop fast.
+---
+Checks: >
+    -*, bugprone-*, cert-*, clang-analyzer-*, concurrency-*,
+    cppcoreguidelines-*, google-*, hicpp-*, misc-*, modernize-*, performance-*,
+    portability-*, readability-*, -bugprone-easily-swappable-parameters,
+    -cppcoreguidelines-avoid-magic-numbers, -cppcoreguidelines-macro-usage,
+    -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+    -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
+    -google-readability-todo, -hicpp-no-array-decay, -hicpp-signed-bitwise,
+    -misc-include-cleaner,
+    -cppcoreguidelines-non-private-member-variables-in-classes,
+    -misc-non-private-member-variables-in-classes,
+    -modernize-use-trailing-return-type, -portability-avoid-pragma-once,
+    -readability-identifier-length, -readability-magic-numbers,
+
+# Rationale for each exclusion above, in order:
+#   bugprone-easily-swappable-parameters   fires on every (name, level) pair and
+#                                          cannot be silenced without wrappers.
+#   cppcoreguidelines-avoid-magic-numbers  duplicated by readability-magic-numbers.
+#   cppcoreguidelines-macro-usage          the generated export header is macros.
+#   *-pro-bounds-pointer-arithmetic        argv iteration in apps/main.cpp.
+#   *-no-array-decay                       same.
+#   *-avoid-unchecked-container-access      fires on every operator[], including
+#                                          ones guarded by an explicit bounds
+#                                          check on the line above.
+#   google-readability-todo                does not require a bug link for a TODO.
+#   hicpp-signed-bitwise                   false positives on std::ios flags.
+#   misc-include-cleaner                   disagrees with IWYU on <iosfwd>.
+#   *-non-private-member-variables          a GoogleTest fixture shares state
+#                                          with its tests through protected
+#                                          members; that is the documented API.
+#   modernize-use-trailing-return-type     a style choice, not a defect.
+#   readability-identifier-length          rejects i, j, n.
+#   readability-magic-numbers              too noisy in tests.
+#   portability-avoid-pragma-once          #pragma once is a deliberate choice;
+#                                          every supported compiler honours it.
+
+WarningsAsErrors: ''
+
+# Analyse our own headers only. A loose pattern such as `include/.*\.h` also
+# matches the vendored GoogleTest headers that FetchContent puts under
+# build/*/_deps/.../include/gmock/, which buries our findings in thousands of
+# warnings about someone else's code.
+HeaderFilterRegex: '.*/(include/cpp_library_template|src|apps|tests)/[^/]*\.(hpp|h)$'
+
+FormatStyle: file
+
+CheckOptions:
+    # Naming, mirroring pep8-naming (ruff N) for C++: snake_case for functions
+    # and variables, CamelCase for types, trailing underscore on private members.
+    - key: readability-identifier-naming.NamespaceCase
+      value: lower_case
+    - key: readability-identifier-naming.ClassCase
+      value: CamelCase
+    - key: readability-identifier-naming.StructCase
+      value: CamelCase
+    - key: readability-identifier-naming.EnumCase
+      value: CamelCase
+    - key: readability-identifier-naming.EnumConstantCase
+      value: lower_case
+    - key: readability-identifier-naming.FunctionCase
+      value: lower_case
+    - key: readability-identifier-naming.VariableCase
+      value: lower_case
+    - key: readability-identifier-naming.ParameterCase
+      value: lower_case
+    - key: readability-identifier-naming.PrivateMemberCase
+      value: lower_case
+    - key: readability-identifier-naming.PrivateMemberSuffix
+      value: _
+    - key: readability-identifier-naming.ProtectedMemberCase
+      value: lower_case
+    - key: readability-identifier-naming.ProtectedMemberSuffix
+      value: _
+    # Constants are kCamelCase, as in the Google style guide. This has to cover
+    # both spellings a constant can have, otherwise the two rules contradict
+    # each other and no name can satisfy both.
+    - key: readability-identifier-naming.ConstexprVariableCase
+      value: CamelCase
+    - key: readability-identifier-naming.ConstexprVariablePrefix
+      value: k
+    - key: readability-identifier-naming.GlobalConstantCase
+      value: CamelCase
+    - key: readability-identifier-naming.GlobalConstantPrefix
+      value: k
+    - key: readability-identifier-naming.MacroDefinitionCase
+      value: UPPER_CASE
+    - key: readability-identifier-naming.TypeAliasCase
+      value: CamelCase
+    - key: readability-identifier-naming.TemplateParameterCase
+      value: CamelCase
+
+    - key: readability-function-cognitive-complexity.Threshold
+      value: '25'
+    - key: modernize-use-nullptr.NullMacros
+      value: 'NULL'
+    - key: performance-unnecessary-value-param.AllowedTypes
+      value: 'std::string_view;std::span'
+    - key: cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor
+      value: 'true'
+    - key: misc-const-correctness.AnalyzeValues
+      value: 'true'

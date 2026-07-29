@@ -1,0 +1,11 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Declare each public dependency here with find_dependency(), so a consumer
+# calling find_package(cpp_library_template) transitively gets what our headers
+# need. This library currently has none.
+
+include("${CMAKE_CURRENT_LIST_DIR}/cpp_library_templateTargets.cmake")
+
+check_required_components(cpp_library_template)

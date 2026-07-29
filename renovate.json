@@ -1,0 +1,73 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:recommended",
+        "config:best-practices",
+        ":semanticCommitTypeAll(chore)"
+    ],
+    "dependencyDashboard": true,
+    "dependencyDashboardTitle": "Dependency Dashboard",
+    "pre-commit": {
+        "enabled": true
+    },
+    "rangeStrategy": "bump",
+    "customManagers": [
+        {
+            "description": "Pick up FetchContent GIT_TAG pins annotated with a renovate comment",
+            "customType": "regex",
+            "managerFilePatterns": ["/(^|/)CMakeLists\\.txt$/", "/\\.cmake$/"],
+            "matchStrings": [
+                "GIT_TAG\\s+(?<currentValue>\\S+)\\s*#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)"
+            ]
+        }
+    ],
+    "packageRules": [
+        {
+            "description": "Group and automerge minor and patch updates of the C++ dependencies",
+            "matchManagers": ["conan"],
+            "matchUpdateTypes": ["minor", "patch"],
+            "groupName": "conan minor & patch",
+            "minimumReleaseAge": "3 days",
+            "automerge": true,
+            "automergeType": "pr",
+            "automergeStrategy": "squash"
+        },
+        {
+            "description": "Major updates are never automatic: an ABI break needs a human",
+            "matchUpdateTypes": ["major"],
+            "enabled": false
+        },
+        {
+            "description": "Keep the FetchContent fallback pin in step with the conan requirement",
+            "matchManagers": ["custom.regex"],
+            "groupName": "conan minor & patch",
+            "minimumReleaseAge": "3 days",
+            "automerge": true,
+            "automergeType": "pr",
+            "automergeStrategy": "squash"
+        },
+        {
+            "description": "GitHub Actions: batched to the weekend and automerged",
+            "matchManagers": ["github-actions"],
+            "groupName": "github actions",
+            "schedule": ["every weekend"],
+            "minimumReleaseAge": "3 days",
+            "automerge": true,
+            "automergeType": "pr",
+            "automergeStrategy": "squash"
+        },
+        {
+            "description": "pre-commit hook pins: automerge, they are formatters and linters",
+            "matchManagers": ["pre-commit"],
+            "groupName": "pre-commit hooks",
+            "automerge": true,
+            "automergeType": "pr",
+            "automergeStrategy": "squash"
+        },
+        {
+            "description": "The compiler and CMake versions in CI are a deliberate support decision, not a dependency",
+            "matchPackageNames": ["cmake", "ninja", "gcc", "clang", "llvm"],
+            "enabled": false
+        }
+    ]
+}

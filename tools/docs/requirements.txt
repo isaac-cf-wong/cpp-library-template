@@ -1,0 +1,6 @@
+# Python tooling for the documentation site. Installed with:
+#
+#   uv pip install -r tools/docs/requirements.txt
+#
+# Renovate keeps these pins current via the pip_requirements manager.
+zensical==0.0.50

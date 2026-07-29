@@ -1,0 +1,70 @@
+# Doxygen configuration, templated by CMake (see tools/docs/CMakeLists.txt).
+#
+# Doxygen is used only as a C++ *parser* here: it emits XML, and
+# tools/docs/gen_api_pages.py turns that XML into Markdown pages that the Zensical
+# site renders alongside the prose. Nothing reads Doxygen's own HTML output,
+# which is why GENERATE_HTML is off.
+
+PROJECT_NAME           = "@PROJECT_NAME@"
+PROJECT_NUMBER         = "@CPP_LIBRARY_TEMPLATE_VERSION_FULL@"
+PROJECT_BRIEF          = "@PROJECT_DESCRIPTION@"
+
+OUTPUT_DIRECTORY       = "@DOXYGEN_OUTPUT_DIR@"
+INPUT                  = @DOXYGEN_INPUT_DIRS@
+FILE_PATTERNS          = *.hpp *.h
+RECURSIVE              = YES
+STRIP_FROM_PATH        = "@PROJECT_SOURCE_DIR@/include" "@PROJECT_BINARY_DIR@/generated"
+STRIP_FROM_INC_PATH    = "@PROJECT_SOURCE_DIR@/include" "@PROJECT_BINARY_DIR@/generated"
+
+# XML is the only output that matters.
+GENERATE_XML           = YES
+XML_PROGRAMLISTING     = NO
+GENERATE_HTML          = NO
+GENERATE_LATEX         = NO
+
+# Document the public API only. A symbol without a comment is a documentation
+# bug, so do not silently invent entries for undocumented members.
+EXTRACT_ALL            = NO
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = NO
+EXTRACT_LOCAL_CLASSES  = NO
+HIDE_UNDOC_MEMBERS     = NO
+HIDE_UNDOC_CLASSES     = NO
+
+# Warn loudly: tools/docs/CMakeLists.txt turns these into a build failure in CI.
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+WARN_IF_INCOMPLETE_DOC = YES
+WARN_NO_PARAMDOC       = YES
+WARN_AS_ERROR          = @DOXYGEN_WARN_AS_ERROR@
+WARN_LOGFILE           = "@DOXYGEN_OUTPUT_DIR@/doxygen_warnings.log"
+
+# Parsing behaviour.
+JAVADOC_AUTOBRIEF      = YES
+QT_AUTOBRIEF           = YES
+MARKDOWN_SUPPORT       = YES
+
+# Autolinking turns any word that happens to match a symbol into a reference, so
+# a plain-English "Logger name" in a @param renders as a code span. The
+# generator emits Markdown, where an explicit `backtick` is the clearer signal.
+AUTOLINK_SUPPORT       = NO
+
+# STL support only adds inheritance information, and it makes Doxygen emit a
+# `std` namespace that would get a page of its own in the site.
+BUILTIN_STL_SUPPORT    = NO
+SORT_MEMBER_DOCS       = NO
+SORT_BRIEF_DOCS        = NO
+INHERIT_DOCS           = YES
+
+# The generated export header is macro soup that adds nothing to the docs; the
+# annotated declarations are documented from the headers that use them.
+PREDEFINED             = "CPP_LIBRARY_TEMPLATE_EXPORT=" \
+                         "CPP_LIBRARY_TEMPLATE_NO_EXPORT=" \
+                         "CPP_LIBRARY_TEMPLATE_DEPRECATED=" \
+                         "DOXYGEN_SHOULD_SKIP_THIS"
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = YES
+ENABLE_PREPROCESSING   = YES
+EXCLUDE_PATTERNS       = */export.hpp

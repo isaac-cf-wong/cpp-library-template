@@ -1,0 +1,285 @@
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+    workflow_dispatch:
+    workflow_call:
+
+concurrency:
+    group: ci-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+    contents: read
+
+jobs:
+    # ---------------------------------------------------------------------
+    # The compatibility matrix. Three axes, kept deliberately small:
+    #   * platform      -- Linux, macOS, Windows
+    #   * compiler      -- GCC and Clang on Linux, AppleClang, MSVC
+    #   * linkage       -- static and shared, because they exercise different
+    #                      code paths through the export header
+    #
+    # The `toolchain-floor` cell is the analogue of the Python template's
+    # `lowest-direct` resolution: it builds with the oldest compiler the project
+    # claims to support, so the claim is tested rather than asserted.
+    # ---------------------------------------------------------------------
+    build-and-test:
+        name: ${{ matrix.name }}
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - name: linux-gcc-shared
+                      os: ubuntu-latest
+                      preset: ci
+                      cc: gcc
+                      cxx: g++
+                      shared: 'ON'
+                    - name: linux-gcc-static
+                      os: ubuntu-latest
+                      preset: ci
+                      cc: gcc
+                      cxx: g++
+                      shared: 'OFF'
+                    - name: linux-clang-shared
+                      os: ubuntu-latest
+                      preset: ci
+                      cc: clang
+                      cxx: clang++
+                      shared: 'ON'
+                    - name: macos-appleclang-shared
+                      os: macos-latest
+                      preset: ci
+                      cc: clang
+                      cxx: clang++
+                      shared: 'ON'
+                    - name: windows-msvc-shared
+                      os: windows-latest
+                      preset: ci-msvc
+                      shared: 'ON'
+                    - name: windows-msvc-static
+                      os: windows-latest
+                      preset: ci-msvc
+                      shared: 'OFF'
+                    # The support floor. These cells pin both the runner image
+                    # and the compiler version, so a runner-image update cannot
+                    # silently stop testing the minimum we advertise.
+                    #
+                    # Raising the floor means editing three places in one commit:
+                    # here, the requirements table in README.md, and the one in
+                    # docs/template_documentation/user_guide/installation.md.
+                    #
+                    # Note what is NOT pinned: the AppleClang and MSVC minimums in
+                    # README.md are a stated intent, not a tested one, because the
+                    # runner images do not offer older toolchains. The macOS and
+                    # Windows cells above test whatever those images currently
+                    # ship.
+                    - name: toolchain-floor-gcc-13
+                      os: ubuntu-24.04
+                      preset: ci
+                      cc: gcc-13
+                      cxx: g++-13
+                      shared: 'ON'
+                      apt-packages: g++-13
+                    - name: toolchain-floor-clang-16
+                      os: ubuntu-24.04
+                      preset: ci
+                      cc: clang-16
+                      cxx: clang++-16
+                      shared: 'ON'
+                      apt-packages: clang-16
+        env:
+            CC: ${{ matrix.cc }}
+            CXX: ${{ matrix.cxx }}
+        steps:
+            - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+              with:
+                  # The version comes from `git describe`, so the tags must be
+                  # present. Without this the build falls back to 0.0.0.
+                  fetch-depth: 0
+
+            - name: Install apt packages
+              if: matrix.apt-packages != ''
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y --no-install-recommends ${{ matrix.apt-packages }}
+
+            - name: Install ninja (Linux and macOS)
+              if: runner.os != 'Windows'
+              run: |
+                  if [ "$RUNNER_OS" = "Linux" ]; then
+                    sudo apt-get update && sudo apt-get install -y --no-install-recommends ninja-build
+                  else
+                    brew install ninja
+                  fi
+
+            - name: Set up ccache
+              uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # v1.2.23
+              with:
+                  key: ${{ matrix.name }}
+                  variant:
+                      ${{ runner.os == 'Windows' && 'sccache' || 'ccache' }}
+
+            - name: Configure
+              run: >
+                  cmake --preset ${{ matrix.preset }} -DBUILD_SHARED_LIBS=${{
+                  matrix.shared }} -DCMAKE_C_COMPILER_LAUNCHER=${{ runner.os ==
+                  'Windows' && 'sccache' || 'ccache' }}
+                  -DCMAKE_CXX_COMPILER_LAUNCHER=${{ runner.os == 'Windows' &&
+                  'sccache' || 'ccache' }}
+
+            - name: Build
+              run: cmake --build --preset ${{ matrix.preset }}
+
+            # Runs the unit tests *and* the package_consumption test, which
+            # installs the project and builds a separate consumer project
+            # against it through find_package().
+            - name: Test
+              run: ctest --preset ${{ matrix.preset }}
+
+            - name: Report skipped and failed tests
+              if: always()
+              run: |
+                  echo "### ${{ matrix.name }}" >> "$GITHUB_STEP_SUMMARY"
+                  echo '```' >> "$GITHUB_STEP_SUMMARY"
+                  ctest --preset ${{ matrix.preset }} --show-only=human >> "$GITHUB_STEP_SUMMARY" || true
+                  echo '```' >> "$GITHUB_STEP_SUMMARY"
+              shell: bash
+
+    # ---------------------------------------------------------------------
+    # Coverage, uploaded to codecov as Cobertura XML. Same report format the
+    # Python template produces, so the codecov configuration is identical.
+    # ---------------------------------------------------------------------
+    coverage:
+        name: coverage
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+              with:
+                  fetch-depth: 0
+
+            - name: Install tooling
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y --no-install-recommends ninja-build
+                  pipx install gcovr
+
+            - name: Configure and build
+              run: |
+                  cmake --preset coverage
+                  cmake --build --preset coverage
+
+            - name: Test and render the report
+              run: cmake --build --preset coverage --target coverage
+
+            - uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
+              if: ${{ !cancelled() }}
+              with:
+                  files: build/coverage/coverage.xml
+                  token: ${{ secrets.CODECOV_TOKEN }}
+
+    # ---------------------------------------------------------------------
+    # Sanitizers. These are the C++ analogue of a runtime correctness check
+    # that no static tool can replace: they only report what the tests
+    # actually execute, which is why they run the full unit suite.
+    # ---------------------------------------------------------------------
+    sanitizers:
+        name: sanitizers (${{ matrix.preset }})
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                preset: [asan-ubsan, tsan]
+        env:
+            CC: clang
+            CXX: clang++
+            UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+            ASAN_OPTIONS: detect_leaks=1:strict_string_checks=1:detect_stack_use_after_return=1
+        steps:
+            - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+              with:
+                  fetch-depth: 0
+
+            - name: Install ninja
+              run:
+                  sudo apt-get update && sudo apt-get install -y
+                  --no-install-recommends ninja-build
+
+            # ThreadSanitizer aborts with "unexpected memory mapping" on kernels
+            # that randomise more of the address space than its shadow mapping
+            # allows. Reducing the entropy is the upstream-recommended
+            # workaround; it affects only this runner.
+            - name: Reduce ASLR entropy for the sanitizer runtime
+              run: sudo sysctl -w vm.mmap_rnd_bits=28
+
+            - name: Configure and build
+              run: |
+                  cmake --preset ${{ matrix.preset }}
+                  cmake --build --preset ${{ matrix.preset }}
+
+            - name: Test
+              run: ctest --preset ${{ matrix.preset }}
+
+    # ---------------------------------------------------------------------
+    # clang-tidy. Not a pre-commit hook: it needs compile_commands.json and a
+    # configured build, which is too slow for a commit.
+    # ---------------------------------------------------------------------
+    static-analysis:
+        name: clang-tidy
+        runs-on: ubuntu-latest
+        # clang-tidy reads compile_commands.json and re-parses each command with
+        # clang. A GCC compile database contains GCC-only warning flags
+        # (-Wduplicated-cond, -Wuseless-cast, ...) which clang rejects outright,
+        # so the database has to come from a clang configure.
+        env:
+            CC: clang
+            CXX: clang++
+        steps:
+            - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+              with:
+                  fetch-depth: 0
+
+            - name: Install tooling
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y --no-install-recommends ninja-build clang-tidy
+
+            - name: Configure
+              run: cmake --preset dev
+
+            # Generated headers must exist before clang-tidy reads the compile
+            # database, so build first. This is cheap thanks to ccache.
+            - name: Build
+              run: cmake --build --preset dev
+
+            - name: Run clang-tidy
+              run: |
+                  run-clang-tidy -p build/dev -quiet \
+                    $(git ls-files 'src/*.cpp' 'apps/*.cpp' 'tests/*.cpp')
+
+    # ---------------------------------------------------------------------
+    # Conan. Proves the recipe still builds and that the packaged result is
+    # consumable, which is what publishing depends on.
+    # ---------------------------------------------------------------------
+    conan:
+        name: conan create
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+              with:
+                  fetch-depth: 0
+
+            - name: Install conan
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y --no-install-recommends ninja-build
+                  pipx install conan
+                  conan profile detect --force
+
+            - name: Build the package and run the test package
+              run: conan create . --build=missing -s compiler.cppstd=20

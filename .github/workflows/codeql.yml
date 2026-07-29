@@ -1,0 +1,45 @@
+name: CodeQL Advanced
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+    schedule:
+        - cron: '0 0 * * 1'
+    workflow_call:
+
+jobs:
+    analyze:
+        name: Analyze C/C++
+        runs-on: ubuntu-latest
+        permissions:
+            security-events: write
+            actions: read
+            contents: read
+        steps:
+            - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+              with:
+                  fetch-depth: 0
+
+            - name: Install ninja
+              run:
+                  sudo apt-get update && sudo apt-get install -y
+                  --no-install-recommends ninja-build
+
+            - name: Initialize CodeQL
+              uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
+              with:
+                  languages: c-cpp
+                  queries: security-and-quality
+
+            # A compiled language needs a real build for CodeQL to see the code.
+            # `autobuild` would find the CMake project on its own, but building
+            # explicitly means CodeQL analyses the same configuration CI tests.
+            - name: Build
+              run: |
+                  cmake --preset ci
+                  cmake --build --preset ci
+
+            - name: Perform CodeQL Analysis
+              uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4

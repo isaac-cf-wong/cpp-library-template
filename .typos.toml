@@ -1,0 +1,36 @@
+# Configuration for `typos`, the spell checker that runs as a pre-commit hook.
+#
+# The escape hatches below are comment-syntax agnostic, so the same markers work
+# in C++ (`//`, `/* */`), CMake and shell (`#`), and Markdown (`<!-- -->`).
+
+[default]
+extend-ignore-re = [
+  # Disable a whole block:
+  #
+  #   // typos:off
+  #   const char* kOcurrance = "intentional";
+  #   // typos:on
+  "(?s)(<!--|#|//|/\\*)\\s*typos:off.*?\\n\\s*(<!--|#|//|\\*/)\\s*typos:on",
+
+  # Disable the line the marker is on:
+  #
+  #   auto ocurrance = 1;  // typos:disable-line
+  "(?Rm)^.*(<!--|#|//)\\s*typos:disable-line\\s*.*?(-->)?$",
+
+  # Disable the line after the marker:
+  #
+  #   // typos:ignore-next-line
+  #   auto ocurrance = 1;
+  "(<!--|#|//)\\s*typos:ignore-next-line\\s*.*?(-->)?\\n.*",
+]
+
+[default.extend-words]
+# C++ abbreviations that are not typos. Extend as needed; prefer a targeted word
+# here over a broad ignore regex.
+iff = "iff"     # "if and only if"
+ser = "ser"     # serialise/serialisation abbreviation
+nd = "nd"       # as in "2nd"
+strat = "strat" # strategy, in template parameter names
+
+[files]
+extend-exclude = ["*.svg", "*.min.js", "*.min.css", "conan.lock", "build/"]

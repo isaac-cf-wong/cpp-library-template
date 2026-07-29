@@ -1,0 +1,67 @@
+# Style for every C++ file in the repository. Enforced by the clang-format
+# pre-commit hook, so nobody argues about it in review.
+#
+# ColumnLimit is 120 to match the 120 in .markdownlint.yaml. Prose in Markdown is
+# wrapped at 80 by prettier; code is not prose.
+---
+Language: Cpp
+BasedOnStyle: Google
+
+Standard: c++20
+ColumnLimit: 120
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+AccessModifierOffset: -4
+ContinuationIndentWidth: 4
+
+# Google style puts the access specifier and the class body at the same level,
+# which reads badly at IndentWidth 4.
+IndentAccessModifiers: false
+
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+
+BreakBeforeBraces: Attach
+BreakConstructorInitializers: BeforeColon
+PackConstructorInitializers: NextLine
+AlwaysBreakTemplateDeclarations: Yes
+
+PointerAlignment: Left
+ReferenceAlignment: Left
+QualifierAlignment: Left
+DerivePointerAlignment: false
+
+SpacesBeforeTrailingComments: 2
+FixNamespaceComments: true
+ShortNamespaceLines: 0
+
+# Include ordering: the header this file implements, then C++ standard library,
+# then third party, then our own headers. IncludeIsMainRegex lets clang-format
+# recognise src/foo.cpp <-> include/cpp_library_template/foo.hpp as a pair.
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+IncludeIsMainRegex: '$'
+IncludeCategories:
+    - Regex: '^<[a-z_]+>$'
+      Priority: 2
+    - Regex: '^<.*\.h(pp)?>$'
+      Priority: 3
+    - Regex: '^"cpp_library_template/'
+      Priority: 4
+    - Regex: '.*'
+      Priority: 5
+
+AlignAfterOpenBracket: Align
+AlignTrailingComments: true
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+BinPackArguments: false
+BinPackParameters: false
+
+InsertNewlineAtEOF: true
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+SeparateDefinitionBlocks: Always

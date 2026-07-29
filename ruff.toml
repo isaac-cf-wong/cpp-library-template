@@ -1,0 +1,44 @@
+# Ruff configuration for the small amount of Python in this repository:
+# conanfile.py, test_package/conanfile.py and docs/gen_api_pages.py.
+#
+# The line length matches .clang-format and .markdownlint.yaml.
+
+line-length = 120
+target-version = "py312"
+fix = true
+
+[lint]
+extend-select = [
+  "E",
+  "F",
+  "W",
+  "I",
+  "UP",
+  "N",
+  "B",
+  "A",
+  "C4",
+  "RUF",
+  "PL",
+  "SIM",
+  "T10",
+  "D",
+  "S",
+]
+ignore = [
+  "E501", # line length is handled by the formatter
+]
+
+[lint.pydocstyle]
+convention = "google"
+
+[lint.per-file-ignores]
+# Conan recipes are a declarative DSL: Conan injects the class attributes, so
+# assigning bare tuples and dicts at class scope is the documented style.
+"conanfile.py" = ["RUF012"]
+"test_package/conanfile.py" = ["D100", "RUF012"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true

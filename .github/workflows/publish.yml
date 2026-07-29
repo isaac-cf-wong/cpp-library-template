@@ -1,0 +1,115 @@
+name: Publish to the Conan remote
+
+# The C++ analogue of publishing a wheel to PyPI: build the Conan package for a
+# tag and upload it to a remote.
+#
+# PUBLISHING IS OFF IN THIS TEMPLATE, AND THIS FILE IS STILL COMPLETE.
+#
+# The switch is a single repository variable, `ENABLE_PUBLISHING`. While it is
+# unset the publish job is skipped before it starts: no runner is claimed, no
+# package is built, nothing is uploaded. A freshly instantiated template
+# therefore cannot publish by accident, and there is no commented-out code to
+# restore.
+#
+# To turn publishing on:
+#
+#   1. Settings -> Secrets and variables -> Actions -> Environments, create an
+#      environment named `conan`, and add three secrets to it:
+#      CONAN_REMOTE_URL, CONAN_LOGIN_USERNAME, CONAN_PASSWORD. Conan has no OIDC
+#      trusted publishing, so a token is unavoidable -- use a scoped one.
+#   2. Settings -> Secrets and variables -> Actions -> Variables, add
+#      ENABLE_PUBLISHING with the value `true`.
+#
+# Enabling the variable without the secrets is a misconfiguration, not a reason
+# to skip quietly: the job fails immediately and says which ones are missing.
+#
+# Getting a recipe into ConanCenter is a separate, manual process: it means
+# opening a pull request against conan-io/conan-center-index. This workflow
+# publishes to your own remote (Artifactory, a self-hosted conan_server, or a
+# Cloudsmith/JFrog repository).
+
+on:
+    workflow_dispatch:
+        inputs:
+            tag_name:
+                description: 'Tag to publish, e.g. v1.2.3'
+                required: true
+                type: string
+    workflow_call:
+        inputs:
+            tag_name:
+                required: true
+                type: string
+
+permissions:
+    contents: read
+
+jobs:
+    publish:
+        # The switch. `vars` resolves against this repository, and an unset
+        # variable is an empty string, so the default is off.
+        if: ${{ vars.ENABLE_PUBLISHING == 'true' }}
+        runs-on: ubuntu-latest
+        environment:
+            name: conan
+        steps:
+            - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+              with:
+                  ref: ${{ inputs.tag_name || github.event.inputs.tag_name }}
+                  fetch-depth: 0
+
+            # Fail before spending several minutes building a package that cannot
+            # be uploaded.
+            - name: Check the credentials are present
+              env:
+                  CONAN_REMOTE_URL: ${{ secrets.CONAN_REMOTE_URL }}
+                  CONAN_LOGIN_USERNAME: ${{ secrets.CONAN_LOGIN_USERNAME }}
+                  CONAN_PASSWORD: ${{ secrets.CONAN_PASSWORD }}
+              run: |
+                  missing=""
+                  if [ -z "$CONAN_REMOTE_URL" ]; then missing="$missing CONAN_REMOTE_URL"; fi
+                  if [ -z "$CONAN_LOGIN_USERNAME" ]; then missing="$missing CONAN_LOGIN_USERNAME"; fi
+                  if [ -z "$CONAN_PASSWORD" ]; then missing="$missing CONAN_PASSWORD"; fi
+                  if [ -n "$missing" ]; then
+                    echo "::error title=Publishing misconfigured::ENABLE_PUBLISHING is 'true' but these secrets are missing on the 'conan' environment:$missing"
+                    exit 1
+                  fi
+
+            - name: Install conan
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y --no-install-recommends ninja-build
+                  pipx install conan
+                  conan profile detect --force
+
+            # `conan create` runs the test package, so a package that cannot be
+            # consumed never reaches the remote.
+            - name: Build and test the package
+              run: |
+                  VERSION='${{ inputs.tag_name || github.event.inputs.tag_name }}'
+                  VERSION="${VERSION#v}"
+                  echo "PACKAGE_REFERENCE=cpp_library_template/${VERSION}" >> "$GITHUB_ENV"
+                  conan create . --build=missing -s compiler.cppstd=20 -s build_type=Release
+                  conan create . --build=missing -s compiler.cppstd=20 -s build_type=Release -o '&:shared=True'
+
+            - name: Add the remote
+              run: conan remote add publish "$CONAN_REMOTE_URL" --force
+              env:
+                  CONAN_REMOTE_URL: ${{ secrets.CONAN_REMOTE_URL }}
+
+            # No continue-on-error here on purpose: a publish step that swallows
+            # its own failure reports a green release that never reached the
+            # remote.
+            - name: Upload
+              run: conan upload "$PACKAGE_REFERENCE" --remote publish --confirm
+              env:
+                  CONAN_LOGIN_USERNAME: ${{ secrets.CONAN_LOGIN_USERNAME }}
+                  CONAN_PASSWORD: ${{ secrets.CONAN_PASSWORD }}
+
+            - name: Summary
+              run: |
+                  {
+                    echo "### Published"
+                    echo
+                    echo "\`$PACKAGE_REFERENCE\` (static and shared, Release)"
+                  } >> "$GITHUB_STEP_SUMMARY"
