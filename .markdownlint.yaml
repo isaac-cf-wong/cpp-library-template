@@ -22,9 +22,10 @@ MD007:
 # MD012: allow consecutive blank lines
 MD012: false
 
-# MD026: trailing punctuation in headings
+# MD026: trailing punctuation in headings. A question mark is allowed: the issue
+# and pull request templates ask questions as headings.
 MD026:
-    punctuation: '.,;:!?'
+    punctuation: '.,;:!'
 
 # MD033: inline HTML is allowed -- prettier-ignore markers and Doxygen anchors
 # both need it
