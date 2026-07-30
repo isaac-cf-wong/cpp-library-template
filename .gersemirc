@@ -1,0 +1,9 @@
+# gersemi formats the CMake files, the way taplo formats the TOML files and
+# prettier formats the Markdown. Run it with `gersemi --check .` or let the
+# pre-commit hook do it.
+line_length: 120
+indent: 4
+list_expansion: favour-inlining
+warn_about_unknown_commands: true
+definitions:
+    - cmake

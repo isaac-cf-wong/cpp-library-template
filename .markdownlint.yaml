@@ -1,0 +1,48 @@
+# markdownlint-cli2 configuration.
+#
+# Note the split between the two Markdown tools: prettier reflows prose to 80
+# columns, markdownlint allows up to 120 so that a long link or table is not a
+# violation. Code blocks and headings are exempt entirely.
+
+# MD013: line length
+MD013:
+    line_length: 120
+    headings: false
+    code_blocks: false
+    tables: false
+
+# MD003: heading style -- ATX (`## Heading`) everywhere
+MD003:
+    style: atx
+
+# MD007: unordered list indentation, matching prettier's tabWidth of 4
+MD007:
+    indent: 4
+
+# MD012: allow consecutive blank lines
+MD012: false
+
+# MD026: trailing punctuation in headings
+MD026:
+    punctuation: '.,;:!?'
+
+# MD033: inline HTML is allowed -- prettier-ignore markers and Doxygen anchors
+# both need it
+MD033: false
+
+# MD041: a file need not start with a top level heading (snippet includes do not)
+MD041: false
+
+# MD014: dollar signs before commands without showing output
+MD014: true
+
+# MD036: allow emphasis used instead of a heading
+MD036: false
+
+# MD032: lists must be surrounded by blank lines
+MD032: true
+
+# MD046: code block style. Disabled rather than set to `fenced`, because a fenced
+# block nested inside a `!!!` admonition has to be indented to belong to it, and
+# markdownlint reads that as an indented code block.
+MD046: false

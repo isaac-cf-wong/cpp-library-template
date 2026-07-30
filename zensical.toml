@@ -1,0 +1,125 @@
+# Zensical configuration -- the static site generator from the Material for
+# MkDocs authors. It replaces mkdocs.yml entirely.
+#
+# See https://zensical.org/docs/ for every option. The API reference pages under
+# docs/api/generated/ are produced by docs/gen_api_pages.py from the Doxygen XML;
+# run `cmake --build build/dev --target docs` before building the site.
+
+[project]
+site_name = "C++ Library Template Documentation"
+site_description = "A GitHub template repository for a C++ library."
+site_author = "Isaac C. F. Wong"
+#site_url = "https://isaac-cf-wong.github.io/cpp-library-template/"
+copyright = """
+Copyright &copy; 2026 Isaac C. F. Wong
+"""
+
+nav = [
+  { "Get Started" = "index.md" },
+  { "API reference" = "api/generated/index.md" },
+  { Contributing = "contributing.md" },
+  { Security = "security.md" },
+  { "Template documentation" = [
+    { Overview = "template_documentation/index.md" },
+    { "Using this GitHub template" = [
+      { Overview = "template_documentation/onboarding/index.md" },
+      { "Template quick start" = "template_documentation/onboarding/quick_start.md" },
+      { "Customize and clean up" = "template_documentation/onboarding/customize_repository.md" },
+    ] },
+    { "User guide" = [
+      { Installation = "template_documentation/user_guide/installation.md" },
+      { "Quick start" = "template_documentation/user_guide/quick_start.md" },
+      { "Project structure" = "template_documentation/user_guide/project_structure.md" },
+      { "Build system" = "template_documentation/user_guide/build_system.md" },
+      { "Development tools" = "template_documentation/user_guide/development_tools.md" },
+      { Testing = "template_documentation/user_guide/testing.md" },
+      { Documentation = "template_documentation/user_guide/documentation.md" },
+      { "CI/CD" = "template_documentation/user_guide/ci_cd.md" },
+      { Packaging = "template_documentation/user_guide/packaging.md" },
+      { Customization = "template_documentation/user_guide/customization.md" },
+    ] },
+    { "Development notes" = [
+      { "Code quality" = "template_documentation/development/code_quality.md" },
+      { Changelog = "template_documentation/development/changelog.md" },
+      { Troubleshooting = "template_documentation/development/troubleshooting.md" },
+    ] },
+  ] },
+]
+
+[project.theme]
+language = "en"
+features = [
+  "announce.dismiss",
+  "content.code.annotate",
+  "content.code.copy",
+  "content.code.select",
+  "content.footnote.tooltips",
+  "content.tabs.link",
+  "content.tooltips",
+  "navigation.footer",
+  "navigation.indexes",
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  "navigation.path",
+  "navigation.sections",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+]
+
+[[project.theme.palette]]
+scheme = "default"
+
+[project.theme.palette.toggle]
+icon = "lucide/sun"
+name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+
+[project.theme.palette.toggle]
+icon = "lucide/moon"
+name = "Switch to light mode"
+
+[project.markdown_extensions.abbr]
+[project.markdown_extensions.admonition]
+[project.markdown_extensions.attr_list]
+[project.markdown_extensions.def_list]
+[project.markdown_extensions.footnotes]
+[project.markdown_extensions.md_in_html]
+[project.markdown_extensions.tables]
+
+[project.markdown_extensions.toc]
+permalink = true
+
+[project.markdown_extensions."pymdownx.arithmatex"]
+generic = true
+
+[project.markdown_extensions."pymdownx.betterem"]
+smart_enable = "all"
+
+[project.markdown_extensions."pymdownx.caret"]
+[project.markdown_extensions."pymdownx.details"]
+
+[project.markdown_extensions."pymdownx.emoji"]
+emoji_generator = "zensical.extensions.emoji.to_svg"
+emoji_index = "zensical.extensions.emoji.twemoji"
+
+[project.markdown_extensions."pymdownx.highlight"]
+[project.markdown_extensions."pymdownx.inlinehilite"]
+[project.markdown_extensions."pymdownx.keys"]
+[project.markdown_extensions."pymdownx.mark"]
+[project.markdown_extensions."pymdownx.smartsymbols"]
+[project.markdown_extensions."pymdownx.superfences"]
+
+[project.markdown_extensions."pymdownx.tabbed"]
+alternate_style = true
+
+[project.markdown_extensions."pymdownx.tasklist"]
+custom_checkbox = true
+
+[project.markdown_extensions."pymdownx.tilde"]
+
+# The `--8<--` snippet syntax, used by docs/index.md and friends to include the
+# root README.md, CONTRIBUTING.md and SECURITY.md rather than duplicating them.
+[project.markdown_extensions."pymdownx.snippets"]

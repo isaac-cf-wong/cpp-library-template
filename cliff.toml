@@ -1,0 +1,102 @@
+# git-cliff configuration.
+#
+# Release notes are generated from conventional commit messages. Nothing is
+# hand-written and no CHANGELOG.md is committed: the notes live in the GitHub
+# Release body, and the version lives in the git tag.
+#
+# setup_repo.sh rewrites the postprocessor below to point at your repository.
+
+[changelog]
+trim = true
+render_always = true
+
+body = """
+{% macro print_commit(commit) -%}
+    - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
+        {% if commit.breaking %}[**breaking**] {% endif %}\
+        {{ commit.message | upper_first }} - \
+        ([{{ commit.id | truncate(length=7, end="") }}](<REPO>/commit/{{ commit.id }}))\
+{% endmacro -%}
+
+{% if version %}\
+    {% if previous.version %}\
+        ## [{{ version | trim_start_matches(pat="v") }}](<REPO>/compare/{{ previous.version }}..{{ version }}) - {{ timestamp | date(format="%Y-%m-%d") }}
+    {% else %}\
+        ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+    {% endif %}\
+{% else %}\
+    ## [unreleased]
+{% endif %}\
+
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | striptags | trim | upper_first }}
+    {% for commit in commits | filter(attribute="scope") | sort(attribute="scope") %}
+        {{ self::print_commit(commit=commit) }}
+    {%- endfor %}
+    {% for commit in commits %}
+        {%- if not commit.scope -%}
+            {{ self::print_commit(commit=commit) }}
+        {% endif -%}
+    {% endfor -%}
+{% endfor %}
+"""
+
+footer = """
+
+---
+
+See the [contributing guide](<REPO>/blob/main/CONTRIBUTING.md) for how to get
+involved. Questions? [Open an issue](<REPO>/issues).
+"""
+
+postprocessors = [
+  # setup_repo.sh rewrites this URL. It is the one place the repository
+  # location is written down.
+  { pattern = '<REPO>', replace = "https://github.com/isaac-cf-wong/cpp-library-template" },
+]
+
+[git]
+conventional_commits = true
+filter_unconventional = false
+require_conventional = false
+split_commits = false
+protect_breaking_commits = false
+filter_commits = false
+recurse_submodules = false
+use_branch_tags = false
+topo_order = false
+topo_order_commits = true
+sort_commits = "newest"
+link_parsers = []
+
+commit_preprocessors = [
+  # Turn "(#123)" into a link to the issue or pull request.
+  { pattern = '\((\w+\s)?#([0-9]+)\)', replace = "([#${2}](<REPO>/issues/${2}))" },
+  # Uncomment to fix typos in commit messages as they are rendered.
+  # { pattern = '.*', replace_command = 'typos --write-changes -' },
+]
+
+# Order matters: the first matching parser wins. The numeric HTML comments set
+# the order the groups appear in.
+commit_parsers = [
+  { message = "^Merge pull request", skip = true },
+  { message = "^feat", group = "<!-- 0 -->🚀 Features" },
+  { message = "^fix", group = "<!-- 1 -->🐛 Bug Fixes" },
+  { message = "^refactor", group = "<!-- 2 -->🚜 Refactor" },
+  { message = "^doc", group = "<!-- 3 -->📚 Documentation" },
+  { message = "^perf", group = "<!-- 4 -->⚡ Performance" },
+  { message = "^style", group = "<!-- 5 -->🎨 Styling" },
+  { message = "^test", group = "<!-- 6 -->🧪 Testing" },
+  { message = "^build", group = "<!-- 7 -->📦 Build System" },
+  { message = "^chore\\(release\\): prepare for", skip = true },
+  { message = "^chore\\(pr\\)", skip = true },
+  { message = "^chore\\(pull\\)", skip = true },
+  { message = "^chore|^ci", group = "<!-- 8 -->⚙️ Miscellaneous Tasks" },
+  { body = ".*security", group = "<!-- 9 -->🛡️ Security" },
+  { message = "^revert", group = "<!-- 10 -->◀️ Revert" },
+  { message = ".*", group = "<!-- 11 -->💼 Other" },
+]
+
+tag_pattern = "v[0-9].*"
+skip_tags = "beta|alpha"
+ignore_tags = "rc"

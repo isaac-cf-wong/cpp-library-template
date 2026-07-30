@@ -1,0 +1,77 @@
+name: Release
+
+# Publishes a real GitHub Release for an existing tag. Called by
+# scheduled_release.yml, or run by hand for an off-cycle release.
+
+on:
+    workflow_dispatch:
+        inputs:
+            tag_name:
+                description: 'Tag to release, e.g. v1.2.3'
+                required: true
+                type: string
+    workflow_call:
+        inputs:
+            tag_name:
+                required: true
+                type: string
+
+permissions:
+    contents: write
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+              with:
+                  ref: ${{ inputs.tag_name || github.event.inputs.tag_name }}
+                  fetch-depth: 0
+
+            - name: Generate the release notes
+              id: changelog
+              uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4.8.0
+              with:
+                  config: cliff.toml
+                  args: --current --verbose
+              env:
+                  OUTPUT: CHANGELOG.md
+
+            # A source archive that builds without git: CMake cannot run
+            # `git describe` inside it, so the version is recorded in a file the
+            # build picks up through CPP_LIBRARY_TEMPLATE_VERSION_OVERRIDE.
+            - name: Build the source archive
+              id: archive
+              run: |
+                  TAG='${{ inputs.tag_name || github.event.inputs.tag_name }}'
+                  VERSION="${TAG#v}"
+                  NAME="cpp_library_template-${VERSION}"
+                  git archive --format=tar --prefix="${NAME}/" "$TAG" -o "${NAME}.tar"
+                  echo "$VERSION" > version.txt
+                  tar --transform "s,^,${NAME}/," -rf "${NAME}.tar" version.txt
+                  gzip -9 "${NAME}.tar"
+                  sha256sum "${NAME}.tar.gz" > "${NAME}.tar.gz.sha256"
+                  echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+
+            - name: Delete the draft release
+              continue-on-error: true
+              run: gh release delete next-release --yes
+              env:
+                  GH_TOKEN: ${{ github.token }}
+
+            - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+              with:
+                  tag_name:
+                      ${{ inputs.tag_name || github.event.inputs.tag_name }}
+                  body: ${{ steps.changelog.outputs.content }}
+                  files: |
+                      ${{ steps.archive.outputs.name }}.tar.gz
+                      ${{ steps.archive.outputs.name }}.tar.gz.sha256
+                  draft: false
+                  prerelease:
+                      ${{ contains(inputs.tag_name ||
+                      github.event.inputs.tag_name, 'alpha') ||
+                      contains(inputs.tag_name || github.event.inputs.tag_name,
+                      'beta') }}

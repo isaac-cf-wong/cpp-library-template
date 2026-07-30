@@ -1,0 +1,92 @@
+# Build trees
+build/
+cmake-build-*/
+out/
+_deps/
+install/
+stage/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+*.cmake.stamp
+compile_commands.json
+.cache/
+
+# Compiled objects and binaries
+*.o
+*.obj
+*.lo
+*.slo
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+*.gch
+*.pch
+*.mod
+*.smod
+
+# Coverage
+*.gcno
+*.gcda
+*.gcov
+*.profraw
+*.profdata
+coverage.xml
+coverage/
+lcov.info
+
+# Sanitizer and profiler output
+*.asan
+*.tsan
+*.ubsan
+perf.data*
+callgrind.out.*
+massif.out.*
+
+# Conan
+graph_info.json
+conanbuildinfo.*
+conaninfo.txt
+conan_toolchain.cmake
+
+# Documentation output
+site/
+docs/api/generated/
+docs/doxygen/
+Doxyfile.local
+
+# Node (prettier and markdownlint hooks)
+node_modules/
+
+# Editors and IDEs
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea/
+*.swp
+*.swo
+*~
+.clangd/
+.ccls-cache/
+
+# Python virtual environment for the docs and tooling
+.venv/
+__pycache__/
+*.py[cod]
+
+# OS metadata
+.DS_Store
+Thumbs.db

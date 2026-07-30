@@ -1,0 +1,187 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 25,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "installDir": "${sourceDir}/build/${presetName}/stage",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CPP_LIBRARY_TEMPLATE_BUILD_TESTS": "ON",
+                "CPP_LIBRARY_TEMPLATE_BUILD_CLI": "ON"
+            }
+        },
+        {
+            "name": "ninja",
+            "hidden": true,
+            "inherits": "base",
+            "generator": "Ninja"
+        },
+        {
+            "name": "dev",
+            "displayName": "Developer build (Debug, warnings as errors)",
+            "inherits": "ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CPP_LIBRARY_TEMPLATE_WARNINGS_AS_ERRORS": "ON"
+            }
+        },
+        {
+            "name": "release",
+            "displayName": "Optimised build",
+            "inherits": "ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            }
+        },
+        {
+            "name": "coverage",
+            "displayName": "Debug build instrumented for coverage",
+            "inherits": "ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CPP_LIBRARY_TEMPLATE_ENABLE_COVERAGE": "ON"
+            }
+        },
+        {
+            "name": "asan-ubsan",
+            "displayName": "Debug build with the address and undefined behaviour sanitizers",
+            "inherits": "ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CPP_LIBRARY_TEMPLATE_SANITIZERS": "address;undefined"
+            }
+        },
+        {
+            "name": "tsan",
+            "displayName": "Debug build with the thread sanitizer",
+            "inherits": "ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CPP_LIBRARY_TEMPLATE_SANITIZERS": "thread"
+            }
+        },
+        {
+            "name": "static",
+            "displayName": "Static library build",
+            "inherits": "ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "BUILD_SHARED_LIBS": "OFF"
+            }
+        },
+        {
+            "name": "shared",
+            "displayName": "Shared library build",
+            "inherits": "ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "BUILD_SHARED_LIBS": "ON"
+            }
+        },
+        {
+            "name": "ci",
+            "displayName": "What CI configures on Linux and macOS",
+            "inherits": "ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "CPP_LIBRARY_TEMPLATE_WARNINGS_AS_ERRORS": "ON"
+            }
+        },
+        {
+            "name": "ci-msvc",
+            "displayName": "What CI configures on Windows",
+            "description": "No generator is named on purpose: pinning one Visual Studio version breaks as soon as the runner image ships another. With no generator CMake picks the newest Visual Studio installed. See build_system.md.",
+            "inherits": "base",
+            "cacheVariables": {
+                "CPP_LIBRARY_TEMPLATE_WARNINGS_AS_ERRORS": "ON"
+            }
+        }
+    ],
+    "buildPresets": [
+        { "name": "dev", "configurePreset": "dev" },
+        { "name": "release", "configurePreset": "release" },
+        { "name": "coverage", "configurePreset": "coverage" },
+        { "name": "asan-ubsan", "configurePreset": "asan-ubsan" },
+        { "name": "tsan", "configurePreset": "tsan" },
+        { "name": "static", "configurePreset": "static" },
+        { "name": "shared", "configurePreset": "shared" },
+        { "name": "ci", "configurePreset": "ci" },
+        {
+            "name": "ci-msvc",
+            "configurePreset": "ci-msvc",
+            "configuration": "RelWithDebInfo"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "output": {
+                "outputOnFailure": true
+            },
+            "execution": {
+                "noTestsAction": "error",
+                "stopOnFailure": false
+            }
+        },
+        {
+            "name": "dev",
+            "configurePreset": "dev",
+            "inherits": "base",
+            "description": "Unit tests only; skips the slower package consumption test",
+            "filter": {
+                "exclude": {
+                    "label": "integration"
+                }
+            }
+        },
+        { "name": "release", "configurePreset": "release", "inherits": "base" },
+        {
+            "name": "coverage",
+            "configurePreset": "coverage",
+            "inherits": "base"
+        },
+        {
+            "name": "asan-ubsan",
+            "configurePreset": "asan-ubsan",
+            "inherits": "base"
+        },
+        { "name": "tsan", "configurePreset": "tsan", "inherits": "base" },
+        { "name": "static", "configurePreset": "static", "inherits": "base" },
+        { "name": "shared", "configurePreset": "shared", "inherits": "base" },
+        { "name": "ci", "configurePreset": "ci", "inherits": "base" },
+        {
+            "name": "ci-msvc",
+            "configurePreset": "ci-msvc",
+            "inherits": "base",
+            "configuration": "RelWithDebInfo"
+        }
+    ],
+    "workflowPresets": [
+        {
+            "name": "dev",
+            "description": "Configure, build and unit test in one command",
+            "steps": [
+                { "type": "configure", "name": "dev" },
+                { "type": "build", "name": "dev" },
+                { "type": "test", "name": "dev" }
+            ]
+        },
+        {
+            "name": "coverage",
+            "description": "Produce build/coverage/coverage.xml and an HTML report",
+            "steps": [
+                { "type": "configure", "name": "coverage" },
+                { "type": "build", "name": "coverage" },
+                { "type": "test", "name": "coverage" }
+            ]
+        }
+    ]
+}

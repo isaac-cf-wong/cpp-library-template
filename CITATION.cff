@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+title: 'cpp-library-template: A GitHub template repository for a C++ library'
+license: 'BSD-3-Clause'
+type: software
+repository-code: 'https://github.com/isaac-cf-wong/cpp-library-template'
+authors:
+    - given-names: Isaac C. F.
+      family-names: Wong
+      affiliation: KU Leuven
+      orcid: 'https://orcid.org/0000-0003-2166-0027'
+keywords:
+    - cpp
+    - cmake
+    - conan
+    - github
+    - template
