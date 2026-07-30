@@ -50,6 +50,10 @@ if(TARGET coverage)
     add_dependencies(coverage cpp_library_template_tests)
 endif()
 
+# Command line tests. They exercise the argument parser through the real binary,
+# which is the only way to test exit statuses.
+add_subdirectory(cli_test)
+
 # The API-surface test: configure, build and run a *separate* project that
 # consumes the installed package through find_package(). This is the analogue of
 # the Python template's smoke_test.py running against the built wheel.

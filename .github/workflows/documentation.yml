@@ -37,8 +37,24 @@ jobs:
                   # The site footer shows the version, which comes from the tag.
                   fetch-depth: 0
 
+            # Ninja is normally already present on GitHub-hosted runners. Keep
+            # the fallback for self-hosted runners, but do not make every docs
+            # build depend on an unnecessary apt transaction.
+            - name: Install ninja
+              run: |
+                  set -euo pipefail
+                  if command -v ninja >/dev/null 2>&1; then
+                    ninja --version
+                    exit 0
+                  fi
+                  sudo apt-get update -o Acquire::Retries=3
+                  sudo apt-get install -y --no-install-recommends ninja-build
+                  ninja --version
+
             # Doxygen comes from the official prebuilt tarball at a pinned
-            # version, not from apt.
+            # version, not from apt. Keep this separate from Ninja: a failure
+            # here must identify the archive download or extraction, rather than
+            # hiding behind a multi-purpose setup step.
             #
             # This is not fussiness. Up to and including 1.12, WARN_NO_PARAMDOC
             # misfires whenever a file carries an `@file` block: it reports
@@ -53,16 +69,16 @@ jobs:
             # To bump it, change both the version and the checksum. Get the
             # checksum with:
             #   curl -fsSL https://www.doxygen.nl/files/doxygen-<v>.linux.bin.tar.gz | sha256sum
-            - name: Install doxygen and ninja
+            - name: Install doxygen
               env:
                   DOXYGEN_VERSION: 1.14.0
                   DOXYGEN_SHA256: e5d6ae24d0bf3f0cdc4d8f146726b89ca323922f19441af99b1872d503665ad6
               run: |
-                  sudo apt-get update
-                  sudo apt-get install -y --no-install-recommends ninja-build
+                  set -euo pipefail
 
                   tarball="doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"
-                  curl -fsSL "https://www.doxygen.nl/files/${tarball}" -o "$tarball"
+                  curl --fail --silent --show-error --location --retry 5 --retry-all-errors \
+                    "https://www.doxygen.nl/files/${tarball}" -o "$tarball"
                   echo "${DOXYGEN_SHA256}  ${tarball}" | sha256sum --check --strict
                   tar xzf "$tarball"
                   echo "$PWD/doxygen-${DOXYGEN_VERSION}/bin" >> "$GITHUB_PATH"
