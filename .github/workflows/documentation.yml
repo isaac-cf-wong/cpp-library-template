@@ -1,25 +1,36 @@
 name: Documentation
 
+# Split into build and deploy on purpose.
+#
+# The build half runs on pull requests too, so a broken documentation build is
+# caught in review. It was not always so: this workflow only ever ran on `main`,
+# which is how a step that could not possibly work reached the default branch and
+# failed there twice before anyone noticed.
+#
+# The deploy half is skipped on pull requests. It could not run there anyway --
+# the `github-pages` environment only permits deployments from `main` -- and a
+# pull request has no business republishing the live site.
+
 on:
     push:
+        branches: [main]
+    pull_request:
         branches: [main]
     workflow_dispatch:
 
 permissions:
     contents: read
-    pages: write
-    id-token: write
 
 concurrency:
-    group: pages
-    cancel-in-progress: false
+    # Keyed by ref rather than a single "pages" group, so concurrent pull requests
+    # do not queue behind one another. Deploys still serialise, because they all
+    # target the same environment.
+    group: documentation-${{ github.ref }}
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-    deploy:
+    build:
         runs-on: ubuntu-latest
-        environment:
-            name: github-pages
-            url: ${{ steps.deployment.outputs.page_url }}
         steps:
             - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
               with:
@@ -51,8 +62,8 @@ jobs:
                   echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
             # Generates docs/api/generated/ from the header comments. CI is
-            # detected by tools/docs/CMakeLists.txt, which turns Doxygen warnings into
-            # errors: an undocumented public symbol fails the build.
+            # detected by tools/docs/CMakeLists.txt, which turns Doxygen warnings
+            # into errors: an undocumented public symbol fails the build.
             - name: Generate the API reference
               run: |
                   cmake --preset ci -DCPP_LIBRARY_TEMPLATE_BUILD_DOCS=ON
@@ -61,10 +72,27 @@ jobs:
             - name: Build the site
               run: zensical build
 
+            - name: Check the site is not empty
+              run: |
+                  test -f site/index.html
+                  test -f site/api/generated/index.html
+                  echo "site: $(find site -type f | wc -l) files" >> "$GITHUB_STEP_SUMMARY"
+
             - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
               with:
                   path: site
 
+    deploy:
+        needs: build
+        if: github.event_name != 'pull_request'
+        runs-on: ubuntu-latest
+        permissions:
+            pages: write
+            id-token: write
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
             - name: Deploy to GitHub Pages
               id: deployment
               uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
