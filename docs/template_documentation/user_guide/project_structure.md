@@ -59,7 +59,11 @@ cpp-library-template/
 ├── scripts/
 │   └── check_headers.sh        Checks each public header compiles standalone
 │
-└── .github/workflows/          CI, release and publishing
+└── .github/
+    ├── workflows/              CI, release and publishing
+    ├── ISSUE_TEMPLATE/         Bug and feature templates, plus the chooser that
+    │                           sends questions to Discussions instead
+    └── pull_request_template.md
 ```
 
 ## Why `include/` is separate from `src/`
