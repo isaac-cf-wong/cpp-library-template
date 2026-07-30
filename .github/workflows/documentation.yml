@@ -66,8 +66,28 @@ jobs:
             # into errors: an undocumented public symbol fails the build.
             - name: Generate the API reference
               run: |
+                  doxygen --version
                   cmake --preset ci -DCPP_LIBRARY_TEMPLATE_BUILD_DOCS=ON
                   cmake --build build/ci --target docs
+
+            # Doxygen writes its warnings to a file, so without this a failure
+            # above shows only "subcommand failed" and the reason is unreachable.
+            - name: Show the Doxygen warnings
+              if: always()
+              run: |
+                  log=build/ci/docs/doxygen/doxygen_warnings.log
+                  if [ -s "$log" ]; then
+                    {
+                      echo "### Doxygen warnings"
+                      echo
+                      echo '```'
+                      cat "$log"
+                      echo '```'
+                    } >> "$GITHUB_STEP_SUMMARY"
+                    cat "$log"
+                  else
+                    echo "No Doxygen warnings."
+                  fi
 
             - name: Build the site
               run: zensical build
