@@ -34,7 +34,7 @@ The script prints this list; here it is with the reasoning.
 | `CITATION.cff`       | `authors`, `affiliation`, `orcid`. Delete the file if you do not want your library to be citable.                                                                       |
 | `conanfile.py`       | `author`, `description`, `topics`.                                                                                                                                      |
 | `CMakeLists.txt`     | The `DESCRIPTION` in the `project()` call.                                                                                                                              |
-| `zensical.toml`      | `site_description`, `site_author`, `copyright`, and `site_url` (uncomment it and point it at your Pages URL).                                                           |
+| `zensical.toml`      | `site_description`, `site_author`, `copyright`. `site_url` is rewritten by `setup_repo.sh`; check it matches your Pages URL.                                            |
 | `README.md`          | The description, and the DOI badge if you mint one on Zenodo.                                                                                                           |
 | `CODE_OF_CONDUCT.md` | The `[INSERT CONTACT METHOD]` placeholder under **Enforcement**.                                                                                                        |
 
@@ -44,9 +44,13 @@ None of this can be done from a file in the repository.
 
 ### GitHub Pages
 
-**Settings -> Pages -> Source: GitHub Actions.** Then uncomment `site_url` in
-`zensical.toml`. Without this the documentation workflow fails at the deploy
-step.
+**Settings -> Pages -> Source: GitHub Actions.** Without this the documentation
+workflow fails at the deploy step.
+
+`site_url` in `zensical.toml` is already set, and `setup_repo.sh` rewrites it to
+your owner and repository. Check it matches the URL GitHub shows on that
+settings page -- if the two disagree, the site builds but its canonical links
+and `sitemap.xml` point somewhere else.
 
 ### Codecov
 

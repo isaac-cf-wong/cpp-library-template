@@ -176,6 +176,22 @@ Build before analysing. `export.hpp` and `version.hpp` are generated.
 `EXTRACT_ALL = NO`, so undocumented symbols do not appear at all. Either the
 comments are missing, or `INPUT` points at the wrong directory.
 
+### `No system Python installation found for Python 3.x.y`
+
+The documentation workflow's tooling step. `astral-sh/setup-uv` with a
+`python-version` installs a **uv-managed** interpreter and points `UV_PYTHON` at
+it; `uv pip install --system` then looks for that exact version installed on the
+runner and does not find it. The two options contradict each other.
+
+Install into a virtual environment instead, which is what the workflow now does:
+
+```yaml
+- run: |
+      uv venv
+      uv pip install -r tools/docs/requirements.txt
+      echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+```
+
 ### The docs build fails in CI and passes locally
 
 By design. `tools/docs/CMakeLists.txt` sets `WARN_AS_ERROR = FAIL_ON_WARNINGS`

@@ -9,7 +9,10 @@
 site_name = "C++ Library Template Documentation"
 site_description = "A GitHub template repository for a C++ library."
 site_author = "Isaac C. F. Wong"
-#site_url = "https://isaac-cf-wong.github.io/cpp-library-template/"
+# Needed for correct canonical links and a correct sitemap.xml. setup_repo.sh
+# rewrites the owner and repository here, so a template instantiation gets its own
+# Pages URL without editing this by hand.
+site_url = "https://isaac-cf-wong.github.io/cpp-library-template/"
 copyright = """
 Copyright &copy; 2026 Isaac C. F. Wong
 """

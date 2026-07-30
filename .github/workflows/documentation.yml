@@ -31,13 +31,24 @@ jobs:
                   sudo apt-get update
                   sudo apt-get install -y --no-install-recommends doxygen ninja-build
 
+            # The minor version is pinned, not the patch. `python-version: '3.14.3'`
+            # says "exactly this build", which is more than the docs build needs and
+            # one more thing to bump by hand.
             - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
               with:
-                  python-version: '3.14.3'
+                  python-version: '3.14'
                   enable-cache: 'true'
 
+            # A virtual environment, not `uv pip install --system`. setup-uv
+            # installs a *uv-managed* interpreter and points UV_PYTHON at it, while
+            # `--system` looks for a matching interpreter installed on the runner
+            # and fails with "No system Python installation found". The two options
+            # contradict each other.
             - name: Install the documentation tooling
-              run: uv pip install --system -r tools/docs/requirements.txt
+              run: |
+                  uv venv
+                  uv pip install -r tools/docs/requirements.txt
+                  echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
             # Generates docs/api/generated/ from the header comments. CI is
             # detected by tools/docs/CMakeLists.txt, which turns Doxygen warnings into
