@@ -42,8 +42,15 @@ int main(int argc, char** argv) {
         auto level = cpp_library_template::LogLevel::warning;
         std::vector<std::string_view> positional;
 
-        for (std::size_t i = 0; i < args.size(); ++i) {
-            const std::string_view arg = args[i];
+        // A `while` loop rather than a `for` loop, because an option like
+        // --verbose consumes the argument after it: the index advances by one or
+        // two depending on what was read. Expressing that as a for-loop counter
+        // reassigned inside the body is how off-by-one bugs get written, and
+        // CodeQL flags it as cpp/loop-variable-changed. Reading each argument
+        // through `args[index++]` keeps "consume one token" in one place.
+        std::size_t index = 0;
+        while (index < args.size()) {
+            const std::string_view arg = args[index++];
 
             if (arg == "-h" || arg == "--help") {
                 print_usage(std::cout);
@@ -54,11 +61,11 @@ int main(int argc, char** argv) {
                 return kExitOk;
             }
             if (arg == "-v" || arg == "--verbose") {
-                if (i + 1 >= args.size()) {
+                if (index >= args.size()) {
                     std::cerr << "error: " << arg << " requires a level\n";
                     return kExitUsage;
                 }
-                level = cpp_library_template::level_from_string(args[++i]);
+                level = cpp_library_template::level_from_string(args[index++]);
                 continue;
             }
             if (arg.starts_with('-')) {
