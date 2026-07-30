@@ -30,7 +30,7 @@ Optional tools, each unlocking one workflow:
 | Tool         | Install                                         | Unlocks                     |
 | ------------ | ----------------------------------------------- | --------------------------- |
 | `gcovr`      | `pipx install gcovr`                            | The coverage report         |
-| `doxygen`    | `apt install doxygen`                           | The API reference           |
+| `doxygen`    | 1.14+, see below                                | The API reference           |
 | `zensical`   | `uv pip install -r tools/docs/requirements.txt` | The documentation site      |
 | `clang-tidy` | `apt install clang-tidy`                        | Static analysis locally     |
 | `conan`      | `pipx install conan`                            | Packaging, and dependencies |
