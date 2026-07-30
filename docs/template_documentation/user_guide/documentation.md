@@ -32,11 +32,23 @@ cmake --build build/dev --target docs-serve   # live reloading site
 cmake --build build/dev --target docs-build   # site into site/
 ```
 
-`docs-serve` and `docs-build` appear only when `zensical` is on `PATH`:
+`docs-serve` and `docs-build` appear only when `zensical` is on `PATH`, so
+install it into a virtual environment first and activate that:
 
 ```bash
+uv venv
 uv pip install -r tools/docs/requirements.txt
+source .venv/bin/activate          # .venv\Scripts\activate on Windows
 ```
+
+`uv pip install` on its own needs an environment to install _into_: with no
+virtual environment active it either fails or, worse, quietly picks up a `.venv`
+from a parent directory. `--system` is not the answer either -- see the comment
+in `.github/workflows/documentation.yml`, where using it against a uv-managed
+interpreter is what broke the docs build once already.
+
+Re-run `cmake --preset dev -DCPP_LIBRARY_TEMPLATE_BUILD_DOCS=ON` after
+activating, so the configure step can find `zensical`.
 
 `docs/api/generated/` is a build artefact and is git ignored. Never edit those
 files -- edit the comments in the headers.
@@ -148,9 +160,8 @@ means adding it here.
 One-time setup:
 
 1. **Settings -> Pages -> Source: GitHub Actions.**
-2. Uncomment `site_url` in `zensical.toml` and point it at
-   `https://<owner>.github.io/<repo>/`. Without it the sitemap and the canonical
-   links are wrong.
+2. Set `site_url` in `zensical.toml` to `https://<owner>.github.io/<repo>/`.
+   Without it the sitemap and the canonical links are wrong.
 3. Push to `main`. `documentation.yml` builds and deploys.
 
 For a custom domain, set it under **Settings -> Pages -> Custom domain**, commit

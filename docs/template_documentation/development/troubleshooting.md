@@ -176,6 +176,41 @@ Build before analysing. `export.hpp` and `version.hpp` are generated.
 `EXTRACT_ALL = NO`, so undocumented symbols do not appear at all. Either the
 comments are missing, or `INPUT` points at the wrong directory.
 
+### `No system Python installation found for Python 3.x.y`
+
+The documentation workflow's tooling step. `astral-sh/setup-uv` with a
+`python-version` installs a **uv-managed** interpreter and points `UV_PYTHON` at
+it; `uv pip install --system` then looks for that exact version installed on the
+runner and does not find it. The two options contradict each other.
+
+Install into a virtual environment instead, which is what the workflow now does:
+
+```yaml
+- run: |
+      uv venv
+      uv pip install -r tools/docs/requirements.txt
+      echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+```
+
+### `parameters of member X are not documented`, when they clearly are
+
+A Doxygen bug, not a problem with your comments. Up to and including 1.12,
+`WARN_NO_PARAMDOC` misfires on any file carrying an `@file` block -- which is
+every header here. Bisected: 1.9.8, 1.10.0 and 1.12.0 misfire; 1.14.0 and later
+are clean.
+
+Ubuntu 24.04 ships 1.9.8, so `apt install doxygen` is not good enough. The
+workflow installs a pinned 1.14.0 from the official tarball, and
+`tools/docs/CMakeLists.txt` makes an old Doxygen a hard error under `$CI` and a
+warning locally.
+
+Locally, get a new enough one from <https://www.doxygen.nl/download.html>, or:
+
+```bash
+curl -fsSL https://www.doxygen.nl/files/doxygen-1.14.0.linux.bin.tar.gz | tar xz
+export PATH="$PWD/doxygen-1.14.0/bin:$PATH"
+```
+
 ### The docs build fails in CI and passes locally
 
 By design. `tools/docs/CMakeLists.txt` sets `WARN_AS_ERROR = FAIL_ON_WARNINGS`

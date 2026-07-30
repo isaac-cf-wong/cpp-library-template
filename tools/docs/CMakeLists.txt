@@ -10,6 +10,34 @@
 find_package(Doxygen REQUIRED)
 find_package(Python3 3.12 REQUIRED COMPONENTS Interpreter)
 
+# Doxygen up to and including 1.12 misfires WARN_NO_PARAMDOC on any file with an
+# `@file` block, reporting undocumented parameters for functions that document
+# every one. Every header here has an `@file` block, so on an older Doxygen the
+# warning log fills with claims that are simply false.
+#
+# In CI, where warnings are errors, that is fatal and the version is pinned to
+# match. Locally it is only noise, so say so and carry on rather than blocking a
+# docs build over a distro package version.
+set(CPP_LIBRARY_TEMPLATE_MIN_DOXYGEN_VERSION 1.14)
+
+if(DOXYGEN_VERSION VERSION_LESS CPP_LIBRARY_TEMPLATE_MIN_DOXYGEN_VERSION)
+    if(DEFINED ENV{CI})
+        message(
+            FATAL_ERROR
+            "Doxygen ${DOXYGEN_VERSION} is too old: ${CPP_LIBRARY_TEMPLATE_MIN_DOXYGEN_VERSION} or newer is "
+            "required when warnings are fatal, because older versions report undocumented parameters for "
+            "functions that document all of them. See .github/workflows/documentation.yml."
+        )
+    else()
+        message(
+            WARNING
+            "Doxygen ${DOXYGEN_VERSION} is older than ${CPP_LIBRARY_TEMPLATE_MIN_DOXYGEN_VERSION}: expect "
+            "spurious 'parameters of member ... are not documented' warnings. They are a Doxygen bug, not a "
+            "problem with your comments."
+        )
+    endif()
+endif()
+
 set(DOXYGEN_OUTPUT_DIR "${PROJECT_BINARY_DIR}/docs/doxygen")
 # Doxygen's INPUT is a space separated list; each entry is quoted so a path with
 # a space in it survives. The Doxyfile template must therefore *not* add quotes

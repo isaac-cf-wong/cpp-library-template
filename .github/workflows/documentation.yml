@@ -1,59 +1,143 @@
 name: Documentation
 
+# Split into build and deploy on purpose.
+#
+# The build half runs on pull requests too, so a broken documentation build is
+# caught in review. It was not always so: this workflow only ever ran on `main`,
+# which is how a step that could not possibly work reached the default branch and
+# failed there twice before anyone noticed.
+#
+# The deploy half is skipped on pull requests. It could not run there anyway --
+# the `github-pages` environment only permits deployments from `main` -- and a
+# pull request has no business republishing the live site.
+
 on:
     push:
+        branches: [main]
+    pull_request:
         branches: [main]
     workflow_dispatch:
 
 permissions:
     contents: read
-    pages: write
-    id-token: write
 
 concurrency:
-    group: pages
-    cancel-in-progress: false
+    # Keyed by ref rather than a single "pages" group, so concurrent pull requests
+    # do not queue behind one another. Deploys still serialise, because they all
+    # target the same environment.
+    group: documentation-${{ github.ref }}
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-    deploy:
+    build:
         runs-on: ubuntu-latest
-        environment:
-            name: github-pages
-            url: ${{ steps.deployment.outputs.page_url }}
         steps:
             - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
               with:
                   # The site footer shows the version, which comes from the tag.
                   fetch-depth: 0
 
+            # Doxygen comes from the official prebuilt tarball at a pinned
+            # version, not from apt.
+            #
+            # This is not fussiness. Up to and including 1.12, WARN_NO_PARAMDOC
+            # misfires whenever a file carries an `@file` block: it reports
+            # "parameters of member X are not documented" for functions whose
+            # @param entries are right there. Every header here has an `@file`
+            # block, and warnings are errors in CI, so on Ubuntu's doxygen 1.9.8
+            # the docs build cannot pass no matter what the comments say.
+            #
+            # Bisected against the real headers: 1.9.8, 1.10.0 and 1.12.0 all
+            # misfire; 1.14.0 and 1.17.0 are clean.
+            #
+            # To bump it, change both the version and the checksum. Get the
+            # checksum with:
+            #   curl -fsSL https://www.doxygen.nl/files/doxygen-<v>.linux.bin.tar.gz | sha256sum
             - name: Install doxygen and ninja
+              env:
+                  DOXYGEN_VERSION: 1.14.0
+                  DOXYGEN_SHA256: e5d6ae24d0bf3f0cdc4d8f146726b89ca323922f19441af99b1872d503665ad6
               run: |
                   sudo apt-get update
-                  sudo apt-get install -y --no-install-recommends doxygen ninja-build
+                  sudo apt-get install -y --no-install-recommends ninja-build
 
+                  tarball="doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz"
+                  curl -fsSL "https://www.doxygen.nl/files/${tarball}" -o "$tarball"
+                  echo "${DOXYGEN_SHA256}  ${tarball}" | sha256sum --check --strict
+                  tar xzf "$tarball"
+                  echo "$PWD/doxygen-${DOXYGEN_VERSION}/bin" >> "$GITHUB_PATH"
+
+            # The minor version is pinned, not the patch. `python-version: '3.14.3'`
+            # says "exactly this build", which is more than the docs build needs and
+            # one more thing to bump by hand.
             - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
               with:
-                  python-version: '3.14.3'
+                  python-version: '3.14'
                   enable-cache: 'true'
 
+            # A virtual environment, not `uv pip install --system`. setup-uv
+            # installs a *uv-managed* interpreter and points UV_PYTHON at it, while
+            # `--system` looks for a matching interpreter installed on the runner
+            # and fails with "No system Python installation found". The two options
+            # contradict each other.
             - name: Install the documentation tooling
-              run: uv pip install --system -r tools/docs/requirements.txt
+              run: |
+                  uv venv
+                  uv pip install -r tools/docs/requirements.txt
+                  echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
             # Generates docs/api/generated/ from the header comments. CI is
-            # detected by tools/docs/CMakeLists.txt, which turns Doxygen warnings into
-            # errors: an undocumented public symbol fails the build.
+            # detected by tools/docs/CMakeLists.txt, which turns Doxygen warnings
+            # into errors: an undocumented public symbol fails the build.
             - name: Generate the API reference
               run: |
+                  doxygen --version
                   cmake --preset ci -DCPP_LIBRARY_TEMPLATE_BUILD_DOCS=ON
                   cmake --build build/ci --target docs
 
+            # Doxygen writes its warnings to a file, so without this a failure
+            # above shows only "subcommand failed" and the reason is unreachable.
+            - name: Show the Doxygen warnings
+              if: always()
+              run: |
+                  log=build/ci/docs/doxygen/doxygen_warnings.log
+                  if [ -s "$log" ]; then
+                    {
+                      echo "### Doxygen warnings"
+                      echo
+                      echo '```'
+                      cat "$log"
+                      echo '```'
+                    } >> "$GITHUB_STEP_SUMMARY"
+                    cat "$log"
+                  else
+                    echo "No Doxygen warnings."
+                  fi
+
             - name: Build the site
               run: zensical build
+
+            - name: Check the site is not empty
+              run: |
+                  test -f site/index.html
+                  test -f site/api/generated/index.html
+                  echo "site: $(find site -type f | wc -l) files" >> "$GITHUB_STEP_SUMMARY"
 
             - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
               with:
                   path: site
 
+    deploy:
+        needs: build
+        if: github.event_name != 'pull_request'
+        runs-on: ubuntu-latest
+        permissions:
+            pages: write
+            id-token: write
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
             - name: Deploy to GitHub Pages
               id: deployment
               uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
