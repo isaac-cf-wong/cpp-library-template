@@ -3,7 +3,7 @@
 [![CI](https://github.com/isaac-cf-wong/cpp-library-template/actions/workflows/ci.yml/badge.svg)](https://github.com/isaac-cf-wong/cpp-library-template/actions/workflows/ci.yml)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/isaac-cf-wong/cpp-library-template/main.svg)](https://results.pre-commit.ci/latest/github/isaac-cf-wong/cpp-library-template/main)
 [![Documentation](https://github.com/isaac-cf-wong/cpp-library-template/actions/workflows/documentation.yml/badge.svg)](https://isaac-cf-wong.github.io/cpp-library-template)
-[![codecov](https://codecov.io/gh/isaac-cf-wong/cpp-library-template/graph/badge.svg)](https://codecov.io/gh/isaac-cf-wong/cpp-library-template)
+[![codecov](https://codecov.io/gh/isaac-cf-wong/cpp-library-template/graph/badge.svg?token=XEF20VWRAJ)](https://codecov.io/gh/isaac-cf-wong/cpp-library-template)
 [![CodeQL](https://github.com/isaac-cf-wong/cpp-library-template/actions/workflows/codeql.yml/badge.svg)](https://github.com/isaac-cf-wong/cpp-library-template/actions/workflows/codeql.yml)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
 [![CMake](https://img.shields.io/badge/CMake-3.25%2B-064F8C.svg?logo=cmake&logoColor=white)](https://cmake.org)
