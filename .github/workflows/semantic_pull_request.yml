@@ -6,7 +6,7 @@ name: Lint PR
 # which is why this check is required rather than advisory.
 
 on:
-    pull_request_target:
+    pull_request:
         types: [opened, reopened, edited, synchronize]
 
 permissions:
